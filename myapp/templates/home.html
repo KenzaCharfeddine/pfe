@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Accueil - Lloyd Assurances</title>
+  <link rel="stylesheet" href="{% static 'css/home.css' %}" />
+</head>
+<body>
+
+  <div class="header">
+    <button action="{% url 'user_management' %}">user</button>
+    <h1>Page d'accueil - Recherche de contrats</h1>
+    <div>
+      <span id="userInfo"></span>
+      <button class="logout" onclick="logout()">Se déconnecter</button>
+      
+    </div>
+  </div>
+
+  <div class="search-container">
+    <form id="searchForm">
+      <label for="police">N° de police</label>
+      <input type="text" id="police" name="police" />
+
+      <label for="acte">Acte de gestion</label>
+      <input type="text" id="acte" name="acte" />
+
+      <label for="numeroActe">N° acte de gestion</label>
+      <input type="text" id="numeroActe" name="numeroActe" />
+
+      <button type="submit">Rechercher</button>
+    </form>
+
+    <div class="results" id="resultsContainer"></div>
+
+    <div class="admin-buttons" id="crudSection">
+      <h3>Gestion des contrats (Admin uniquement)</h3>
+      <button>Ajouter</button>
+      <button>Modifier</button>
+      <button>Supprimer</button>
+    </div>
+  </div>
+
+</body>
+</html>
+
+
+

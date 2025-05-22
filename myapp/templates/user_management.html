@@ -1,0 +1,119 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gestion des utilisateurs</title>
+  <link rel="stylesheet" href="{% static 'css/styleuser.css' %}">
+  <link 
+    rel="stylesheet" 
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" 
+    integrity="sha512-p1CmFzB5Y20MF2I0vRfeX1qUN3CYjNzwlJ+THTU22B9Dq6UVsR6Cy/hV0rS1B4vXVRtQFjz1rKlXcw4oVu1McA==" 
+    crossorigin="anonymous" 
+    referrerpolicy="no-referrer" 
+  />
+</head>
+<body>
+    
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>
+            {{ message }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <h2>Gestion des utilisateurs</h2>
+
+    <main>
+      <!-- ADD USER -->
+      <form method="post" action="{% url 'user_add' %}">
+        {% csrf_token %}
+        <input type="text"  name="username" placeholder="Nom d’utilisateur" required>
+        <input type="email" name="email"    placeholder="Email"         required>
+        <select name="role" required>
+          <option value="">Choisir un niveau…</option>
+          <option value="Level 1">Niveau 1 (remplissage)</option>
+          <option value="Level 2">Niveau 2 (approbation)</option>
+          <option value="Level 3">Niveau 3 (approbation)</option>
+          <option value="Level 4">Niveau 4 (bulk/unit)</option>
+          <option value="Admin">Admin (tout accès)</option>
+        </select>
+        
+        <button type="submit">Ajouter</button>
+      </form>
+      
+
+      <!-- DELETE USER -->
+      <section class="section">
+        <h3>Supprimer un utilisateur</h3>
+        <form method="post" action="{% url 'user_delete' %}">
+          {% csrf_token %}
+          <select name="user_id" required>
+            <option value="">Sélectionner un utilisateur…</option>
+            {% for u in users %}
+              <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Supprimer</button>
+        </form>
+      </section>
+
+      <!-- MODIFY USER -->
+      <section class="section">
+        <h3>Modifier un utilisateur</h3>
+        <form method="get" action="{% url 'user_modify' %}">
+          <select name="user_id" required>
+            <option value="">Sélectionner un utilisateur…</option>
+            {% for u in users %}
+              <option value="{{ u.id }}">{{ u.username }} ({{ u.email }})</option>
+            {% endfor %}
+          </select>
+          <button type="submit">Charger</button>
+        </form>
+
+        {% if user_to_modify %}
+        <div class="modify-fields">
+          <form method="post" action="{% url 'user_modify' %}">
+            {% csrf_token %}
+            <input type="hidden" name="user_id" value="{{ user_to_modify.id }}">
+            <input type="email" name="email" value="{{ user_to_modify.email }}" placeholder="Nouvel email">
+            <p>Un nouveau mot de passe sera généré automatiquement.</p>
+            <button type="submit">Mettre à jour</button>
+          </form>
+        </div>
+        {% endif %}
+      </section>
+
+      <!-- USER LIST -->
+      <section class="section">
+        <h3>Utilisateurs actifs</h3>
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Nom d’utilisateur</th>
+              <th>Email</th>
+              <th>Staff</th>
+              <th>Actif</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in users %}
+            <tr>
+              <td>{{ u.username }}</td>
+              <td>{{ u.email }}</td>
+              <td>{{ u.is_staff|yesno:"Oui,Non" }}</td>
+              <td>{{ u.is_active|yesno:"Oui,Non" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4">Aucun utilisateur trouvé.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
