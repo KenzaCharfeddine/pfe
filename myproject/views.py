@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, logout
 from django.shortcuts import render, redirect
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect, get_object_or_404
@@ -10,16 +10,24 @@ from django.db.models import Q
 from django.db import models 
 from django.shortcuts import render, get_object_or_404
 from django.shortcuts import redirect 
-from contrats.models import Contrat
+from contrats.models import Contrats
 
+def logout_view(request):
+    logout(request)
+    return redirect('login')
 
 def home(request):
-    return render(request, 'home.html')  # your HTML file name
+    return render(request, 'home.html') 
+
+@login_required
+def admin_home(request):
+    return render(request, 'adminHome.html')
 
 
 def generate_password(length=12):
     chars = string.ascii_letters + string.digits + string.punctuation
     return ''.join(random.choice(chars) for _ in range(length))
+
 
 def login_view(request):
     if request.method == 'POST':
@@ -37,11 +45,11 @@ def login_view(request):
             if user:
                 login(request, user)
                 if user.is_superuser:
-                    return redirect('user_management')
+                    return redirect('admin_home') 
                 else:
-                    return redirect('home')  # ou une autre vue pour les utilisateurs non-admin
+                    descriptions =Contrats.objects.values_list('description', flat=True).order_by('description').distinct()
+                    return render(request, 'home.html', {'descriptions': descriptions})
         return render(request, 'login.html', {'error': "Identifiants incorrects."})
-
     return render(request, 'login.html')
 
 def user_management(request):
@@ -59,8 +67,8 @@ def user_add(request):
         username = request.POST['username']
         email = request.POST['email']
         role = request.POST['role']
-        password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-
+        # password = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        password = '123'
         user = User.objects.create_user(username=username, email=email, password=password)
         if role == 'Admin':
             user.is_staff = True
@@ -101,30 +109,49 @@ def user_modify(request):
     messages.success(request, f"Nouveau mot de passe pour {u.username} : {new_pw}")
     return redirect('user_management')  # <-- Redirige vers la vue user_management (pas un template) 
 
-def rechercher_contrats(request):
-    contrats = []
 
+from django.contrib import messages
+
+from django.http import JsonResponse
+
+from datetime import datetime
+
+def format_date_to_ddmmyyyy(date_str):
+    try:
+        return datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except:
+        return ""
+    
+def recherche(request):
     if request.method == 'POST':
-        police = request.POST.get('police')
-        acte = request.POST.get('acte')
-        numero_acte = request.POST.get('numero_acte')
+        police = request.POST.get('numero_police')
+        desc = request.POST.get('description')
+        date_effet = format_date_to_ddmmyyyy(request.POST.get('date_effet'))
+        date_emission = format_date_to_ddmmyyyy(request.POST.get('date_emission'))
 
-        contrats = Contrat.objects.filter(
-            numero_police__icontains=police,
-            acte_gestion__icontains=acte,
-            numero_acte__icontains=numero_acte
-        )
 
-    return render(request, 'recherche.html', {'contrats': contrats})
+        if police and desc and date_effet and date_emission:
+            contrats = list(Contrats.objects.filter(
+                numero_police__icontains=police,
+                description__icontains=desc,
+                date_effet__icontains=date_effet,
+                date_emission__icontains=date_emission
+            ).values())
+            
+            return JsonResponse({'success': True, 'contrats': contrats})
+        else:
+            return JsonResponse({'success': False, 'message': 'Veuillez remplir tous les champs.'})
+    return JsonResponse({'success': False, 'message': 'Requête invalide.'})
+
 
 def lancer_controle(request):
     if request.method == 'POST':
         contrat_id = request.POST.get('contrat_id')
-        contrat = get_object_or_404(Contrat, id=contrat_id)
+        contrat = get_object_or_404(Contrats, id=contrat_id)
         return render(request, 'controle.html', {'contrat': contrat})
     
 def valider_controle(request, contrat_id):
-    contrat = get_object_or_404(Contrat, id=contrat_id)
+    contrat = get_object_or_404(Contrats, id=contrat_id)
 
     if request.method == 'POST':
         contrat.date_boc = request.POST.get('date_boc')

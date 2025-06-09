@@ -1,12 +1,16 @@
 from django.db import models
 
-class Contrat(models.Model):
+class Contrats(models.Model):
+    numero_attestation=models.IntegerField(primary_key=True)
     numero_police = models.CharField(max_length=100)
-    acte_gestion = models.CharField(max_length=100)
-    numero_acte = models.CharField(max_length=100)
-    date_boc = models.DateField(null=True, blank=True)
-    statut_controle = models.CharField(max_length=100, default='Non contrôlé')
+    description = models.CharField(max_length=100)
     motif_reserve = models.TextField(null=True, blank=True)
+    date_effet = models.TextField(null=True, blank=True)
+    date_emission = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'Contrats'  
+        managed = False      
 
     def __str__(self):
         return self.numero_police
