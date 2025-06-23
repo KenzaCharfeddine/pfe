@@ -3,78 +3,175 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Accueil - Lloyd Assurances</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Recherche contrats - Lloyd Assurances</title>
   <link rel="stylesheet" href="{% static 'css/home.css' %}" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-    crossorigin="anonymous" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous" />
+  <style>
+    .highlight {
+      animation: flash 1s ease-in-out;
+      border: 2px solid #198754;
+    }
+
+    @keyframes flash {
+      0% { background-color: #d1e7dd; }
+      100% { background-color: white; }
+    }
+
+    #successToast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+    }
+  </style>
 </head>
-
 <body>
-  <div class="header">
-    <button>user</button>
-    <h1>Page d'accueil - Recherche de contrats</h1>
-    <div>
-      <span id="userInfo"></span>
-      <button class="logout">Se déconnecter</button>
-    </div>
-  </div>
-
-  <div class="search-container px-3">
-    <form id="searchForm" method="POST" action="{% url 'recherche' %}">
+  <div class="container py-3">
+<nav class="navbar navbar-light bg-light px-3 mb-4">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <div></div> <!-- espace vide à gauche pour centrer le titre -->
+    <h1 class="navbar-brand mb-0 text-center flex-grow-1">Recherche de contrats</h1>
+    <form method="POST" action="{% url 'logout' %}">
       {% csrf_token %}
-      <label for="numero_police">N° de police</label>
-      <input type="text" id="numero_police" name="numero_police" />
-
-      <label for="description">Description</label>
-      <select id="description" name="description" class="form-control">
-        <option value="">-- Choisir --</option>
-        {% for d in descriptions %}
-        <option value="{{ d }}">{{ d }}</option>
-        {% endfor %}
-      </select>
-
-      <label for="date_effet">Date effet</label>
-      <input type="date" id="date_effet" name="date_effet" />
-
-      <label for="date_emission">Date emission</label>
-      <input type="date" id="date_emission" name="date_emission" />
-
-      <button type="submit" id="searchBtn" disabled>Rechercher</button>
+      <button type="submit" class="btn btn-outline-danger">Déconnexion</button>
     </form>
   </div>
-
-  <!-- MODAL -->
-  <div class="modal fade" id="resultModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Résultats de la recherche</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body" id="modalBody">
-          <!-- content filled dynamically -->
-        </div>
+</nav>
+    
+    <div class="row justify-content-center mb-5">
+      <div class="col-md-8 col-lg-6">
+        <form id="searchForm" method="POST" action="{% url 'recherche' %}">
+          {% csrf_token %}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label for="numero_police" class="form-label">N° de police</label>
+              <input type="text" id="numero_police" name="numero_police" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="description" class="form-label">Description</label>
+              <select id="description" name="description" class="form-select">
+                <option value="">-- Choisir --</option>
+                {% for d in descriptions %}
+                  <option value="{{ d }}">{{ d }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label for="date_emission" class="form-label">Date émission</label>
+              <input type="date" id="date_emission" name="date_emission" class="form-control" />
+            </div>
+            <div class="col-md-6">
+              <label for="date_effet" class="form-label">Date effet</label>
+              <input type="date" id="date_effet" name="date_effet" class="form-control" />
+            </div>
+          </div>
+          <button type="submit" id="searchBtn" class="btn btn-primary mt-3 w-100" disabled>Rechercher</button>
+        </form>
       </div>
+    </div>
+
+    <div id="resultsContainer" class="row g-4" style="display:none;"></div>
+
+    <div class="text-center mt-3" id="backToSearchWrapper" style="display: none;">
+      <button type="button" class="btn btn-outline-secondary" id="backToSearchBtn">← Retour à la recherche</button>
     </div>
   </div>
 
-  <!-- Django messages -->
+  <div class="modal fade" id="controlModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="controlForm" class="modal-content" method="POST" action="{% url 'update_contrat' %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">Saisir la date BOC</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <div id="step1">
+            <label for="dateControlInput" class="form-label">Date BOC</label>
+            <input type="date" id="dateControlInput" name="date_control" class="form-control" required />
+          </div>
+
+          <div id="step2" style="display:none;">
+            <p><strong>Type de contrôle</strong></p>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="type_control" id="techniqueRadio" value="Contrôle technique" checked>
+              <label class="form-check-label" for="techniqueRadio">Technique</label>
+            </div>
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="radio" name="type_control" id="administrativeRadio" value="Contrôle administrative">
+              <label class="form-check-label" for="administrativeRadio">Administrative</label>
+            </div>
+
+            <label for="statutControlSelect" class="form-label">Statut</label>
+            <select id="statutControlSelect" name="statut_control" class="form-select mb-3" required>
+              <option value="Non contrôlé" selected>Non contrôlé</option>
+              <option value="Validé">Validé</option>
+              <option value="Validé par responsable">Validé par responsable</option>
+            </select>
+
+            <label for="motifReserve" class="form-label">Motif réserve (optionnel)</label>
+            <textarea id="motifReserve" name="motif_reserve" class="form-control" rows="3" placeholder="Ajouter un motif si nécessaire..."></textarea>
+          </div>
+
+          <input type="hidden" id="modalNumeroPolice" name="numero_police" />
+          <input type="hidden" id="modalDescription" name="description" />
+          <input type="hidden" id="modalDateEffet" name="date_effet" />
+          <input type="hidden" id="modalDateEmission" name="date_emission" />
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="modalPrevBtn" class="btn btn-secondary" style="display:none;">Précédent</button>
+          <button type="button" id="modalNextBtn" class="btn btn-primary">Suivant</button>
+          <button type="submit" id="modalSubmitBtn" class="btn btn-success" style="display:none;">Valider</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="successToast" class="toast align-items-center text-bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true" style="display: none;">
+    <div class="d-flex">
+      <div class="toast-body">Contrat mis à jour avec succès.</div>
+    </div>
+  </div>
+
   {% if messages %}
   <div class="container mt-3">
     {% for message in messages %}
-    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
     {% endfor %}
   </div>
   {% endif %}
 
-  <!-- Field Validation Script -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
   <script>
     const policeInput = document.getElementById('numero_police');
     const descSelect = document.getElementById('description');
     const effetInput = document.getElementById('date_effet');
     const emissionInput = document.getElementById('date_emission');
     const searchBtn = document.getElementById('searchBtn');
+    const backToSearchWrapper = document.getElementById('backToSearchWrapper');
+    const backToSearchBtn = document.getElementById('backToSearchBtn');
+
+    const searchForm = document.getElementById('searchForm');
+    const resultsContainer = document.getElementById('resultsContainer');
+    const controlModalEl = document.getElementById('controlModal');
+    const controlModal = new bootstrap.Modal(controlModalEl);
+    const modalTitle = document.getElementById('modalTitle');
+    const step1 = document.getElementById('step1');
+    const step2 = document.getElementById('step2');
+    const modalPrevBtn = document.getElementById('modalPrevBtn');
+    const modalNextBtn = document.getElementById('modalNextBtn');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+    const dateControlInput = document.getElementById('dateControlInput');
+    const typeControlRadios = document.getElementsByName('type_control');
+    const statutControlSelect = document.getElementById('statutControlSelect');
+    const motifReserveTextarea = document.getElementById('motifReserve');
+    const toastEl = document.getElementById('successToast');
+
+    let contrats = [];
+    let currentEditingContractIndex = null;
+    let currentStep = 1;
 
     function checkFields() {
       const filled =
@@ -87,19 +184,13 @@
 
     policeInput.addEventListener('input', checkFields);
     descSelect.addEventListener('change', checkFields);
-    effetInput.addEventListener('input', checkFields);
     emissionInput.addEventListener('input', checkFields);
-
+    effetInput.addEventListener('input', checkFields);
     window.addEventListener('load', checkFields);
-  </script>
 
-  <!-- Fetch AJAX Handler -->
-  <script>
-    document.getElementById("searchForm").addEventListener("submit", function (e) {
+    searchForm.addEventListener('submit', function (e) {
       e.preventDefault();
-
       const formData = new FormData(this);
-
       fetch("{% url 'recherche' %}", {
         method: "POST",
         headers: {
@@ -107,29 +198,156 @@
         },
         body: formData
       })
-        .then(response => response.json())
-        .then(data => {
-          const modalBody = document.getElementById("modalBody");
-
-          if (data.success) {
-            let html = "<ul>";
-            data.contrats.forEach(c => {
-              html += `<li><strong>${c.numero_police}</strong> - ${c.description}</li>`;
-            });
-            html += "</ul>";
-            modalBody.innerHTML = html;
-          } else {
-            modalBody.innerHTML = `<div class="alert alert-warning">${data.message}</div>`;
-          }
-
-          const modal = new bootstrap.Modal(document.getElementById('resultModal'));
-          modal.show();
-        })
-        .catch(err => console.error("Erreur :", err));
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.contrats.length > 0) {
+          contrats = data.contrats;
+          displayContracts(contrats);
+          resultsContainer.style.display = 'flex';
+          resultsContainer.style.flexWrap = 'wrap';
+          searchForm.style.display = 'none';
+          backToSearchWrapper.style.display = 'block';
+        } else {
+          alert(data.message || 'Aucun contrat trouvé.');
+          resultsContainer.style.display = 'none';
+          searchForm.style.display = 'block';
+        }
+      })
+      .catch(() => {
+        alert("Erreur lors de la recherche");
+      });
     });
-  </script>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-    crossorigin="anonymous"></script>
+    backToSearchBtn.addEventListener('click', () => {
+      resultsContainer.style.display = 'none';
+      backToSearchWrapper.style.display = 'none';
+      searchForm.style.display = 'block';
+    });
+
+    function displayContracts(contrats) {
+      resultsContainer.innerHTML = '';
+      contrats.forEach((c, i) => {
+        resultsContainer.insertAdjacentHTML('beforeend', `
+        <div class="d-flex justify-content-center">
+          <div class="card" style="min-width: 18rem; max-width: 24rem; margin-bottom: 1.5rem;" id="contractCard-${i}">
+            <div class="card-body">
+              <h5 class="card-title">${c.numero_police}</h5>
+              <h6 class="card-subtitle mb-2 text-muted">${c.description}</h6>
+              <p class="card-text"><strong>Date effet:</strong> ${c.date_effet || 'N/A'}</p>
+              <p class="card-text"><strong>Date émission:</strong> ${c.date_emission || 'N/A'}</p>
+              <p class="card-text"><strong>Date BOC:</strong> ${formatDateToFr(c.date_controle) || 'Non saisie'}</p>
+              <p class="card-text"><strong>Type de contrôle:</strong> ${c.type_controle || 'Non défini'}</p>
+              <p class="card-text"><strong>Statut:</strong> ${c.statut_controle || 'Non contrôlé'}</p>
+              <p class="card-text"><strong>Motif réserve:</strong> ${c.motif_reserve || '—'}</p>
+              <button class="btn btn-primary btn-sm mt-2" data-index="${i}">Modifier contrôle</button>
+            </div>
+          </div>
+        </div>
+        `);
+      });
+
+      document.querySelectorAll('#resultsContainer .btn-primary').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          currentEditingContractIndex = parseInt(e.target.getAttribute('data-index'));
+          openModalForContract(contrats[currentEditingContractIndex]);
+        });
+      });
+    }
+
+    function openModalForContract(contract) {
+      currentStep = 1;
+      modalTitle.textContent = 'Saisir la date BOC';
+      step1.style.display = 'block';
+      step2.style.display = 'none';
+      modalPrevBtn.style.display = 'none';
+      modalNextBtn.style.display = 'inline-block';
+      modalSubmitBtn.style.display = 'none';
+
+      dateControlInput.value = contract.date_controle || '';
+      document.getElementById('techniqueRadio').checked = contract.type_controle === 'Contrôle technique';
+      document.getElementById('administrativeRadio').checked = contract.type_controle === 'Contrôle administrative';
+      statutControlSelect.value = contract.statut_controle || 'Non contrôlé';
+      motifReserveTextarea.value = contract.motif_reserve || '';
+
+      document.getElementById('modalNumeroPolice').value = contract.numero_police;
+      document.getElementById('modalDescription').value = contract.description;
+      document.getElementById('modalDateEffet').value = contract.date_effet || '';
+      document.getElementById('modalDateEmission').value = contract.date_emission || '';
+
+      controlModal.show();
+    }
+
+    modalNextBtn.addEventListener('click', () => {
+      if (!dateControlInput.value) {
+        alert('Veuillez saisir une date BOC valide.');
+        return;
+      }
+      currentStep = 2;
+      modalTitle.textContent = 'Sélectionnez le type et le statut du contrôle';
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+      modalPrevBtn.style.display = 'inline-block';
+      modalNextBtn.style.display = 'none';
+      modalSubmitBtn.style.display = 'inline-block';
+    });
+
+    modalPrevBtn.addEventListener('click', () => {
+      currentStep = 1;
+      modalTitle.textContent = 'Saisir la date BOC';
+      step1.style.display = 'block';
+      step2.style.display = 'none';
+      modalPrevBtn.style.display = 'none';
+      modalNextBtn.style.display = 'inline-block';
+      modalSubmitBtn.style.display = 'none';
+    });
+
+    document.getElementById('controlForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+
+      fetch("{% url 'update_contrat' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": formData.get("csrfmiddlewaretoken")
+        },
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const updated = {
+            ...contrats[currentEditingContractIndex],
+            date_controle: formData.get('date_control'),
+            type_controle: formData.get('type_control'),
+            statut_controle: formData.get('statut_control'),
+            motif_reserve: formData.get('motif_reserve')
+          };
+          contrats[currentEditingContractIndex] = updated;
+          displayContracts(contrats);
+
+          const card = document.getElementById(`contractCard-${currentEditingContractIndex}`);
+          card.classList.add('highlight');
+          setTimeout(() => card.classList.remove('highlight'), 1500);
+
+          controlModal.hide();
+          toastEl.style.display = 'block';
+          setTimeout(() => toastEl.style.display = 'none', 2500);
+        } else {
+          alert(data.message || 'Erreur de mise à jour');
+        }
+      })
+      .catch(() => alert("Erreur lors de l'envoi de la mise à jour."));
+    });
+    function formatDateToFr(dateStr) {
+  if (!dateStr) return null;
+  const parts = dateStr.split('-'); 
+  if (parts.length === 3) {
+    const [year, month, day] = parts;
+    return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+  }
+  return dateStr;
+}
+
+  </script>
 </body>
 </html>

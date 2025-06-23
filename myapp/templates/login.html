@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Connexion - Lloyd Assurances</title>
   <link rel="stylesheet" href="{% static 'css/login.css' %}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 </head>
 <body>
   <div class="login-wrapper">
@@ -16,7 +17,7 @@
         {% csrf_token %}
         
         <label for="username">Nom d'utilisateur ou Email</label>
-        <input type="text" id="username" name="username" required />
+        <input type="text" id="username" name="username" required value="{{ username|default:'' }}"/>
 
         <label for="password">Mot de passe</label>
         <input type="password" id="password" name="password" required />
@@ -25,6 +26,19 @@
       </form>
     </div>
   </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+  <script>
+    {% if error %}
+      toastr.options = {
+        "closeButton": true,
+        "progressBar": true,
+        "positionClass": "toast-top-center"
+      };
+      toastr.error("{{ error }}");
+    {% endif %}
+  </script>
 </body>
 </html>
 
