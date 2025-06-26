@@ -41,7 +41,7 @@
     
     <div class="row justify-content-center mb-5">
       <div class="col-md-8 col-lg-6">
-        <form id="searchForm" method="POST" action="{% url 'recherche' %}">
+        <form id="searchForm" method="POST" action="{% url 'rechercheContrat' %}">
           {% csrf_token %}
           <div class="row g-3">
             <div class="col-md-6">
@@ -191,7 +191,7 @@
     searchForm.addEventListener('submit', function (e) {
       e.preventDefault();
       const formData = new FormData(this);
-      fetch("{% url 'recherche' %}", {
+      fetch("{% url 'rechercheContrat' %}", {
         method: "POST",
         headers: {
           "X-CSRFToken": formData.get("csrfmiddlewaretoken")
@@ -235,10 +235,16 @@
               <h6 class="card-subtitle mb-2 text-muted">${c.description}</h6>
               <p class="card-text"><strong>Date effet:</strong> ${c.date_effet || 'N/A'}</p>
               <p class="card-text"><strong>Date émission:</strong> ${c.date_emission || 'N/A'}</p>
-              <p class="card-text"><strong>Date BOC:</strong> ${formatDateToFr(c.date_controle) || 'Non saisie'}</p>
+              <p class="card-text"><strong>Agence:</strong> ${c.agence || 'N/A'}</p>
+              <p class="card-text"><strong>Type de mouvement:</strong> ${c.type_mouvement || 'N/A'}</p>
+              <p class="card-text"><strong>Branche:</strong> ${c.branche || 'N/A'}</p>
+              <p class="card-text"><strong>Produit:</strong> ${c.produit || 'N/A'}</p>
+              ${c.date_controle && c.date_controle !== '' ? `
+              <p class="card-text"><strong>Date BOC:</strong> ${formatDateToFr(c.date_controle)}</p>
               <p class="card-text"><strong>Type de contrôle:</strong> ${c.type_controle || 'Non défini'}</p>
               <p class="card-text"><strong>Statut:</strong> ${c.statut_controle || 'Non contrôlé'}</p>
               <p class="card-text"><strong>Motif réserve:</strong> ${c.motif_reserve || '—'}</p>
+            ` : ''}
               <button class="btn btn-primary btn-sm mt-2" data-index="${i}">Modifier contrôle</button>
             </div>
           </div>

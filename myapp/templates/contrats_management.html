@@ -41,6 +41,26 @@
 
             <label for="date_effet_add">Date effet</label>
             <input type="date" id="date_effet_add" name="date_effet" class="form-control mb-2" required>
+
+            <label for="agence_add">Agence</label>
+            <input type="text" id="agence_add" name="agence" class="form-control mb-2" required>
+
+            <div class="mb-2">
+              <label class="d-block mb-1">Type de mouvement</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_add_emission" value="Emission" required>
+                <label class="form-check-label" for="mv_add_emission">Emission</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_add_modification" value="Modification">
+                <label class="form-check-label" for="mv_add_modification">Modification</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_add_annulation" value="Annulation">
+                <label class="form-check-label" for="mv_add_annulation">Annulation</label>
+              </div>
+            </div>
+
           </div>
           <div class="modal-footer">
             <button type="submit" class="btn btn-primary">Ajouter</button>
@@ -79,6 +99,25 @@
 
             <label for="modifyDateEffet">Date effet</label>
             <input type="date" id="modifyDateEffet" name="date_effet" class="form-control mb-2" required>
+            <label for="modifyAgence">Agence</label>
+            <input type="text" id="modifyAgence" name="agence" class="form-control mb-2" required>
+
+            <div class="mb-2">
+              <label class="d-block mb-1">Type de mouvement</label>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_modify_emission" value="Emission" required>
+                <label class="form-check-label" for="mv_modify_emission">Emission</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_modify_modification" value="Modification">
+                <label class="form-check-label" for="mv_modify_modification">Modification</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="type_mouvement" id="mv_modify_annulation" value="Annulation">
+                <label class="form-check-label" for="mv_modify_annulation">Annulation</label>
+              </div>
+            </div>
+
           </div>
           <div class="modal-footer">
             <button type="submit" class="btn btn-success">Mettre à jour</button>
@@ -96,15 +135,20 @@
     </div>
     <table class="table table-striped table-hover" id="contratsTable">
       <thead>
-        <tr>
-          <th>N° Attestation</th>
-          <th>N° Police</th>
-          <th>Description</th>
-          <th>Date effet</th>
-          <th>Date émission</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
+  <tr>
+    <th>N° Attestation</th>
+    <th>N° Police</th>
+    <th>Description</th>
+    <th>Date effet</th>
+    <th>Date émission</th>
+    <th>Agence</th>
+    <th>Type Mouvement</th>
+    <th>Branche</th>
+    <th>Produit</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+
       <tbody>
         {% for c in contrats %}
         <tr data-numero="{{ c.numero_attestation }}">
@@ -113,16 +157,24 @@
           <td class="description">{{ c.description }}</td>
           <td class="date_effet">{{ c.date_effet }}</td>
           <td class="date_emission">{{ c.date_emission }}</td>
+          <td class="agence">{{ c.agence }}</td>
+          <td class="type_mouvement">{{ c.type_mouvement }}</td>
+          <td class="branche">{{ c.branche }}</td>
+          <td class="produit">{{ c.produit }}</td>
+
+          
           <td>
             <div class="d-flex gap-2">
               <button class="btn btn-secondary btn-sm btn-modify" data-bs-toggle="modal" data-bs-target="#modifyContratModal"
-                      data-numero="{{ c.numero_attestation }}"
-                      data-police="{{ c.numero_police }}"
-                      data-description="{{ c.description }}"
-                      data-dateeffet="{{ c.date_effet|default_if_none:'' }}"
-                      data-dateemission="{{ c.date_emission|default_if_none:'' }}">
-                Modifier
-              </button>
+                    data-numero="{{ c.numero_attestation }}"
+                    data-police="{{ c.numero_police }}"
+                    data-description="{{ c.description }}"
+                    data-dateeffet="{{ c.date_effet|default_if_none:'' }}"
+                    data-dateemission="{{ c.date_emission|default_if_none:'' }}"
+                    data-agence="{{ c.agence|default_if_none:'' }}"
+                    data-typemouvement="{{ c.type_mouvement|default_if_none:'' }}">
+              Modifier
+            </button>
               <button class="btn btn-danger btn-sm btn-delete" data-numero="{{ c.numero_attestation }}">Supprimer</button>
             </div>
           </td>
@@ -220,18 +272,30 @@
   // Ouvrir modal modification avec les données
   const modifyModal = document.getElementById('modifyContratModal');
   modifyModal.addEventListener('show.bs.modal', e => {
-    const btn = e.relatedTarget;
-    const form = document.getElementById('formModifyContrat');
-    form.numero_attestation.value = btn.getAttribute('data-numero');
-    form.numero_police.value = btn.getAttribute('data-police');
-    form.description.value = btn.getAttribute('data-description');
-    form.date_effet.value = btn.getAttribute('data-dateeffet');
-    form.date_emission.value = btn.getAttribute('data-dateemission');
+  const btn = e.relatedTarget;
+  const form = document.getElementById('formModifyContrat');
 
-    // Mettre à jour la sélection de la description dans la liste déroulante
-    const descSelect = document.getElementById('modifyDescription');
-    descSelect.value = btn.getAttribute('data-description');
-  });
+  form.numero_attestation.value = btn.getAttribute('data-numero');
+  form.numero_police.value = btn.getAttribute('data-police');
+  form.description.value = btn.getAttribute('data-description');
+  form.date_effet.value = btn.getAttribute('data-dateeffet');
+  form.date_emission.value = btn.getAttribute('data-dateemission');
+  form.agence.value = btn.getAttribute('data-agence');
+
+  // Cocher le bon type de mouvement
+  const typeMouvement = btn.getAttribute('data-typemouvement');
+  if (typeMouvement) {
+    const radios = form.querySelectorAll('input[name="type_mouvement"]');
+    radios.forEach(radio => {
+      radio.checked = radio.value === typeMouvement;
+    });
+  }
+
+  // Mettre à jour la sélection de la description
+  const descSelect = document.getElementById('modifyDescription');
+  descSelect.value = btn.getAttribute('data-description');
+});
+
 
   // MODIFICATION
   document.getElementById('formModifyContrat').addEventListener('submit', async e => {

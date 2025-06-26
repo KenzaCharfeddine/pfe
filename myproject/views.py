@@ -24,7 +24,7 @@ def admin_required_redirect(view_func):
     def wrapper(request, *args, **kwargs):
         if request.user.is_authenticated:
             if not request.user.is_superuser:
-                return redirect('user_home')
+                return redirect('recherche')
         else:
             return redirect('login')
         return view_func(request, *args, **kwargs)
@@ -50,7 +50,7 @@ def root_redirect(request):
         return redirect('login')
     if request.user.is_superuser:
         return redirect('admin_home')
-    return redirect('user_home')
+    return redirect('recherche')
 
 
 def logout_view(request):
@@ -60,7 +60,7 @@ def logout_view(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect('admin_home' if request.user.is_superuser else 'user_home')
+        return redirect('admin_home' if request.user.is_superuser else 'recherche')
 
     if request.method == 'POST':
         username_or_email = request.POST['username']
@@ -75,7 +75,7 @@ def login_view(request):
             user = authenticate(request, username=user.username, password=password)
             if user:
                 login(request, user)
-                return redirect('admin_home' if user.is_superuser else 'user_home')
+                return redirect('admin_home' if user.is_superuser else 'recherche')
 
         return render(request, 'login.html', {'error': "Identifiants incorrects.",'username': username_or_email })
 
@@ -100,10 +100,9 @@ def admin_home(request):
 
 
 @login_required(login_url='login')
-@user_required_redirect
-def home(request):
+def recherche(request):
     descriptions = Contrats.objects.values_list('description', flat=True).distinct().order_by('description')
-    return render(request, 'home.html', {'descriptions': descriptions})
+    return render(request, 'recherche.html', {'descriptions': descriptions})
 
 
 # === Utilisateurs ===
@@ -163,7 +162,7 @@ def format_date_to_ddmmyyyy(date_str):
         return ""
 
 
-def recherche(request):
+def rechercheContrat(request):
     if request.method == 'POST':
         police = request.POST.get('numero_police')
         desc = request.POST.get('description')
@@ -245,51 +244,59 @@ def update_contrat(request):
 @admin_required_redirect
 @require_http_methods(["POST"])
 def contrat_add(request):
-    numero_attestation = request.POST.get('numero_attestation')
-    numero_police = request.POST.get('numero_police')
-    description = request.POST.get('description')
-    date_effet = request.POST.get('date_effet')  # format HTML: YYYY-MM-DD
-    date_emission = request.POST.get('date_emission')  # format HTML: YYYY-MM-DD
+    data = request.POST
+    numero_attestation = data.get('numero_attestation')
+    numero_police = data.get('numero_police')
+    description = data.get('description')
+    agence = data.get('agence')
+    type_mouvement = data.get('type_mouvement')
+    branche = 'AUTO'
+    produit = 'Auto Particulier'
+    date_effet_raw = data.get('date_effet')
+    date_emission_raw = data.get('date_emission')
 
-    # Conversion en format dd/MM/YYYY pour stockage
     try:
-        date_effet = datetime.strptime(date_effet, "%Y-%m-%d").strftime("%d/%m/%Y")
-        date_emission = datetime.strptime(date_emission, "%Y-%m-%d").strftime("%d/%m/%Y")
+        date_effet = datetime.strptime(date_effet_raw, "%Y-%m-%d").strftime("%d/%m/%Y")
+        date_emission = datetime.strptime(date_emission_raw, "%Y-%m-%d").strftime("%d/%m/%Y")
     except:
-        return JsonResponse({'success': False, 'message': "Les dates doivent être au format valide."})
+        return JsonResponse({'success': False, 'message': "Dates invalides."})
 
-    if not all([numero_attestation, numero_police, description, date_effet, date_emission]):
+    if not all([numero_attestation, numero_police, description, agence, type_mouvement]):
         return JsonResponse({'success': False, 'message': "Tous les champs doivent être remplis."})
 
     if Contrats.objects.filter(numero_attestation=numero_attestation).exists():
-        return JsonResponse({'success': False, 'message': f"Le contrat avec l'attestation '{numero_attestation}' existe déjà."})
+        return JsonResponse({'success': False, 'message': f"Contrat '{numero_attestation}' existe déjà."})
 
-    contrat = Contrats(
+    contrat = Contrats.objects.create(
         numero_attestation=numero_attestation,
         numero_police=numero_police,
         description=description,
+        agence=agence,
+        type_mouvement=type_mouvement,
+        branche=branche,
+        produit=produit,
         date_effet=date_effet,
-        date_emission=date_emission,
-        motif_reserve=None,
-        date_controle=None,
-        type_controle=None,
-        statut_controle=None
+        date_emission=date_emission
     )
-    contrat.save()
 
     return JsonResponse({
         'success': True,
-        'message': f"Contrat '{numero_attestation}' ajouté avec succès.",
+        'message': f"Contrat '{numero_attestation}' ajouté.",
         'contrat': {
             'numero_attestation': contrat.numero_attestation,
             'numero_police': contrat.numero_police,
             'description': contrat.description,
+            'agence': contrat.agence,
+            'type_mouvement': contrat.type_mouvement,
+            'branche': contrat.branche,
+            'produit': contrat.produit,
             'date_effet': contrat.date_effet,
             'date_emission': contrat.date_emission,
         }
     })
-   
     
+    
+       
 @login_required(login_url='login')
 @admin_required_redirect
 @require_http_methods(["POST"])
@@ -306,45 +313,46 @@ def contrat_delete(request):
 @admin_required_redirect
 @require_http_methods(["POST"])
 def contrat_modify(request):
-    numero_attestation = request.POST.get('numero_attestation')
+    data = request.POST
+    numero_attestation = data.get('numero_attestation')
     contrat = get_object_or_404(Contrats, numero_attestation=numero_attestation)
 
-    contrat.numero_police = request.POST.get('numero_police', contrat.numero_police)
-    contrat.description = request.POST.get('description', contrat.description)
+    contrat.numero_police = data.get('numero_police', contrat.numero_police)
+    contrat.description = data.get('description', contrat.description)
+    contrat.agence = data.get('agence', contrat.agence)
+    contrat.type_mouvement = data.get('type_mouvement', contrat.type_mouvement)
 
-    def parse_date(date_str):
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
-            try:
-                return datetime.strptime(date_str, fmt)
-            except (ValueError, TypeError):
-                continue
-        return None
+    def dt_str(raw):
+        dt = parse_date(raw)
+        return dt.strftime("%d/%m/%Y") if dt else None
 
-    date_effet_raw = request.POST.get('date_effet', None)
-    date_emission_raw = request.POST.get('date_emission', None)
-
-    if date_effet_raw:
-        dt = parse_date(date_effet_raw)
-        if dt:
-            # Stocke en texte au format "dd/MM/yyyy"
-            contrat.date_effet = dt.strftime("%d/%m/%Y")
-
-    if date_emission_raw:
-        dt = parse_date(date_emission_raw)
-        if dt:
-            # Stocke en texte au format "dd/MM/yyyy"
-            contrat.date_emission = dt.strftime("%d/%m/%Y")
+    if data.get('date_effet'):
+        contrat.date_effet = dt_str(data['date_effet']) or contrat.date_effet
+    if data.get('date_emission'):
+        contrat.date_emission = dt_str(data['date_emission']) or contrat.date_emission
 
     contrat.save()
 
     return JsonResponse({
         'success': True,
-        'message': f"Contrat '{numero_attestation}' modifié avec succès.",
+        'message': f"Contrat '{numero_attestation}' mis à jour.",
         'contrat': {
             'numero_attestation': contrat.numero_attestation,
             'numero_police': contrat.numero_police,
             'description': contrat.description,
-            'date_effet': contrat.date_effet if contrat.date_effet else '',
-            'date_emission': contrat.date_emission if contrat.date_emission else '',
+            'agence': contrat.agence,
+            'type_mouvement': contrat.type_mouvement,
+            'branche': contrat.branche,
+            'produit': contrat.produit,
+            'date_effet': contrat.date_effet,
+            'date_emission': contrat.date_emission,
         }
     })
+    
+def parse_date(date_str):
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(date_str, fmt)
+        except:
+            pass
+    return None

@@ -10,7 +10,8 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
 
    
-    path('user/', views.home, name='user_home'),
+    path('recherche/', views.recherche, name='recherche'),
+    path('rechercheContrat/', views.rechercheContrat, name='rechercheContrat'),
 
 
     path('admin/', views.admin_home, name='admin_home'),
@@ -21,7 +22,6 @@ urlpatterns = [
     path('user-modify/', views.user_modify, name='user_modify'),
 
 
-    path('recherche/', views.recherche, name='recherche'),
     path('update-contrat/', views.update_contrat, name='update_contrat'),
     # path('valider-controle/<int:contrat_id>/', views.valider_controle, name='valider_controle'),  # à activer si tu l'utilises
     

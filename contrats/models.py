@@ -10,6 +10,10 @@ class Contrats(models.Model):
     date_controle = models.TextField(null=True, blank=True)
     type_controle = models.TextField(null=True, blank=True)
     statut_controle = models.TextField(null=True, blank=True)
+    agence = models.TextField(null=True, blank=True)
+    type_mouvement = models.TextField(null=True, blank=True)
+    branche = models.TextField(null=True, blank=True)
+    produit = models.TextField(null=True, blank=True)
     
     class Meta:
         db_table = 'Contrats'  
