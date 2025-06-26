@@ -93,7 +93,8 @@ def admin_home(request):
 
     elif page == 'contracts':
         contrats = Contrats.objects.all().order_by("numero_attestation")
-        return render(request, 'contrats_management.html', {'contrats': contrats})
+        descriptions = Contrats.objects.values_list('description', flat=True).distinct().order_by('description')
+        return render(request, 'contrats_management.html', {'contrats': contrats,'descriptions':descriptions})
 
     return render(request, 'adminHome.html')
 
@@ -182,49 +183,55 @@ def recherche(request):
     return JsonResponse({'success': False, 'message': 'Requête invalide.'})
 
 
+
 def update_contrat(request):
     if request.method == 'POST':
         numero_police = request.POST.get('numero_police')
         description = request.POST.get('description')
-        date_effet = request.POST.get('date_effet')  # attendu: dd/MM/YYYY
+        date_effet = request.POST.get('date_effet') 
         date_emission = request.POST.get('date_emission')
         date_controle = request.POST.get('date_control')
         type_controle = request.POST.get('type_control')
         statut_controle = request.POST.get('statut_control')
         motif_reserve = request.POST.get('motif_reserve')
 
-        def is_valid_ddmmyyyy(date_str):
-            try:
-                datetime.strptime(date_str, "%d/%m/%Y")
-                return True
-            except:
-                return False
-            
-        try:    
-            date_controle = datetime.strptime(date_controle, "%Y-%m-%d").strftime("%d/%m/%Y")
-        except: 
-            return JsonResponse({'success': False, 'message': "Date de contrôle invalide (jj/mm/aaaa)."})
-            
+        def parse_date(date_str):
+            """
+            Tente de parser date_str en format dd/MM/YYYY ou YYYY-MM-DD,
+            retourne la date formatée en dd/MM/YYYY ou None si invalide.
+            """
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
+                try:
+                    return datetime.strptime(date_str, fmt).strftime("%d/%m/%Y")
+                except (ValueError, TypeError):
+                    continue
+            return None
+
+        # Parsing + formatage
+        date_effet_fmt = parse_date(date_effet)
+        date_emission_fmt = parse_date(date_emission)
+        date_controle_fmt = parse_date(date_controle) if date_controle else None
 
         # Validation
-        if not all([numero_police, description, date_effet, date_emission]):
-            return JsonResponse({'success': False, 'message': "Champs de recherche manquants."})
-        if not is_valid_ddmmyyyy(date_effet) or not is_valid_ddmmyyyy(date_emission):
-            return JsonResponse({'success': False, 'message': "Dates effet et émission doivent être au format jj/mm/aaaa."})
-        if date_controle and not is_valid_ddmmyyyy(date_controle):
-            return JsonResponse({'success': False, 'message': "Date de contrôle invalide (jj/mm/aaaa)."})
+        if not all([numero_police, description, date_effet_fmt, date_emission_fmt]):
+            return JsonResponse({'success': False, 'message': "Champs obligatoires manquants ou dates invalides."})
+        if date_controle and not date_controle_fmt:
+            return JsonResponse({'success': False, 'message': "Date de contrôle invalide (jj/mm/aaaa ou aaaa-mm-jj)."})
 
         try:
             contrat = Contrats.objects.get(
                 numero_police=numero_police,
                 description=description,
-                date_effet=date_effet,
-                date_emission=date_emission
+                date_effet=date_effet_fmt,
+                date_emission=date_emission_fmt
             )
         except Contrats.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Contrat non trouvé.'})
 
-        contrat.date_controle = date_controle or None
+        # Mise à jour des champs (dates en dd/MM/YYYY)
+        contrat.date_effet = date_effet_fmt
+        contrat.date_emission = date_emission_fmt
+        contrat.date_controle = date_controle_fmt
         contrat.type_controle = type_controle or None
         contrat.statut_controle = statut_controle or None
         contrat.motif_reserve = motif_reserve or None
@@ -233,7 +240,6 @@ def update_contrat(request):
         return JsonResponse({'success': True, 'message': 'Contrat mis à jour avec succès.'})
 
     return JsonResponse({'success': False, 'message': 'Méthode non autorisée.'})
-
 
 @login_required(login_url='login')
 @admin_required_redirect
@@ -294,6 +300,8 @@ def contrat_delete(request):
     return JsonResponse({'success': True, 'message': f"Contrat '{numero_attestation}' supprimé."})
 
 
+
+
 @login_required(login_url='login')
 @admin_required_redirect
 @require_http_methods(["POST"])
@@ -303,11 +311,40 @@ def contrat_modify(request):
 
     contrat.numero_police = request.POST.get('numero_police', contrat.numero_police)
     contrat.description = request.POST.get('description', contrat.description)
-    contrat.date_effet = request.POST.get('date_effet', contrat.date_effet)
-    contrat.date_emission = request.POST.get('date_emission', contrat.date_emission)
 
-    # Plus de gestion des champs supprimés (motif_reserve, date_controle, etc.)
+    def parse_date(date_str):
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+            try:
+                return datetime.strptime(date_str, fmt)
+            except (ValueError, TypeError):
+                continue
+        return None
+
+    date_effet_raw = request.POST.get('date_effet', None)
+    date_emission_raw = request.POST.get('date_emission', None)
+
+    if date_effet_raw:
+        dt = parse_date(date_effet_raw)
+        if dt:
+            # Stocke en texte au format "dd/MM/yyyy"
+            contrat.date_effet = dt.strftime("%d/%m/%Y")
+
+    if date_emission_raw:
+        dt = parse_date(date_emission_raw)
+        if dt:
+            # Stocke en texte au format "dd/MM/yyyy"
+            contrat.date_emission = dt.strftime("%d/%m/%Y")
 
     contrat.save()
-    messages.success(request, f"Contrat '{numero_attestation}' modifié avec succès.")
-    return HttpResponseRedirect(reverse('admin_home') + '?page=contracts')
+
+    return JsonResponse({
+        'success': True,
+        'message': f"Contrat '{numero_attestation}' modifié avec succès.",
+        'contrat': {
+            'numero_attestation': contrat.numero_attestation,
+            'numero_police': contrat.numero_police,
+            'description': contrat.description,
+            'date_effet': contrat.date_effet if contrat.date_effet else '',
+            'date_emission': contrat.date_emission if contrat.date_emission else '',
+        }
+    })
